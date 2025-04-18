@@ -56,8 +56,8 @@ const Login: React.FC = () => {
     // Simulate network request
     await new Promise(resolve => setTimeout(resolve, 1500));
     
-    // Demo login - any username with password "admin" works
-    if (password.toLowerCase() === 'admin') {
+    // Check for specific credentials: username "VIXOV" and password "23wesdee"
+    if (username === 'VIXOV' && password === '23wesdee') {
       playSuccess();
       dispatch({ type: 'SET_USERNAME', payload: username });
       dispatch({ type: 'SET_AUTHENTICATED', payload: true });
@@ -78,7 +78,7 @@ const Login: React.FC = () => {
       
       // Show special message after multiple attempts
       if (loginAttempts >= 2) {
-        setErrorMessage('ALERT: Security protocols activated [Hint: try "admin"]');
+        setErrorMessage('ALERT: Security protocols activated [Hint: VIXOV/23wesdee]');
       }
     }
   };
