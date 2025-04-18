@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAppContext, AppState } from '../context/AppContext';
 import { useSound } from '../hooks/useSound';
@@ -7,7 +8,7 @@ const BootSequence: React.FC = () => {
   const [progressValue, setProgressValue] = useState(0);
   const [bootMessages, setBootMessages] = useState<string[]>([]);
   const { dispatch } = useAppContext();
-  const { playBlip, playBoot } = useSound();
+  const { playKeypress, playTransition, playBoot } = useSound();
 
   // Boot messages for each phase
   const phaseMessages = {
@@ -27,7 +28,7 @@ const BootSequence: React.FC = () => {
       // Add new boot message
       if (phaseMessages[phase] && messageIndex < phaseMessages[phase].length) {
         setBootMessages(prev => [...prev, phaseMessages[phase][messageIndex]]);
-        playBlip();
+        playKeypress(); // Changed from playBlip to playKeypress since that exists in the hook
         messageIndex++;
       }
 
@@ -56,7 +57,7 @@ const BootSequence: React.FC = () => {
     }, 750);
 
     return () => clearInterval(interval);
-  }, [playBlip, playBoot]);
+  }, [playKeypress, playBoot, playTransition]);
 
   // Complete boot sequence
   useEffect(() => {
