@@ -1,156 +1,303 @@
-
-import React, { useEffect, useRef, useState } from 'react';
-import { useAppContext, AppState } from '../context/AppContext';
+import React, { useState, useEffect } from 'react';
+import { useAppContext, AppState, Account } from '../context/AppContext';
 import { useSound } from '../hooks/useSound';
-import { simulateCommandOutput } from '../utils/terminalEffects';
-import EarthGlobe from './EarthGlobe';
+import { v4 as uuidv4 } from 'uuid';
 
-const BootSequence: React.FC = () => {
-  const logRef = useRef<HTMLDivElement>(null);
-  const [progress, setProgress] = useState(0);
+const AccountsTable: React.FC = () => {
   const { state, dispatch } = useAppContext();
-  const { playBoot, playKeypress, playSuccess } = useSound();
-  const [showEarth, setShowEarth] = useState(false);
-
-  useEffect(() => {
-    // Play boot sound
-    playBoot();
+  const { playKeypress, playSuccess, playError } = useSound();
+  
+  const [formData, setFormData] = useState<Omit<Account, 'id'>>({
+    date: new Date().toISOString().split('T')[0],
+    amount: 0,
+    type: 'income',
+    description: '',
+  });
+  
+  const [isEditing, setIsEditing] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  
+  // Handle input changes
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'amount' ? parseFloat(value) || 0 : value,
+    }));
+    playKeypress();
+  };
+  
+  // Handle form submit
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
     
-    // Start boot sequence
-    const bootSystem = async () => {
-      if (!logRef.current) return;
-      
-      // Initial boot messages
-      const commands = [
-        { text: 'SYSTEM INITIALIZING...', type: 'output' },
-        { text: 'BIOS CHECK...OK', type: 'output' },
-        { text: 'MEMORY DIAGNOSTICS...COMPLETE', type: 'output' },
-        { text: 'INITIALIZING CORE SYSTEMS', type: 'output' },
-        { text: 'LOADING KERNEL...', type: 'output' },
-        { text: 'KERNEL LOADED SUCCESSFULLY', type: 'success' },
-        { text: 'MOUNTING FILESYSTEMS...', type: 'output' },
-        { text: 'NETWORK INTERFACES INITIALIZING...', type: 'output' },
-        { text: 'ESTABLISHING SECURE TUNNEL...', type: 'output' },
-        { text: 'SECURE CONNECTION ESTABLISHED', type: 'success' },
-        { text: 'LOADING USER ENVIRONMENT...', type: 'output' },
-        { text: 'AUTHENTICATING USER CREDENTIALS...', type: 'output' },
-        { text: `USER ${state.username.toUpperCase()} AUTHENTICATED`, type: 'success' },
-        { text: 'INITIALIZING NEURAL UPLINK...', type: 'output' },
-        { text: 'BIOELECTRIC INTERFACE CONNECTED', type: 'success' },
-        { text: 'INITIALIZING GLOBAL POSITIONING SYSTEM...', type: 'output' },
-      ];
-      
-      await simulateCommandOutput(logRef.current, commands, 120);
-      
-      // Show Earth animation
-      setShowEarth(true);
-      setProgress(40);
-      
-      // Next phase of boot
-      const secondPhase = [
-        { text: 'GLOBAL POSITIONING SYSTEM ONLINE', type: 'success' },
-        { text: 'CONNECTING TO SATELLITE NETWORK...', type: 'output' },
-        { text: 'SATELLITE UPLINK ESTABLISHED', type: 'success' },
-        { text: 'DOWNLOADING UPDATES...', type: 'output' },
-        { text: 'UPDATES INSTALLED SUCCESSFULLY', type: 'success' },
-        { text: 'INITIALIZING AI SUBSYSTEMS...', type: 'output' },
-        { text: 'QUANTUM PROCESSING UNIT ACTIVATED', type: 'success' },
-        { text: 'LOADING REAL-TIME DATA ANALYTICS ENGINE...', type: 'output' },
-        { text: 'ACTIVATING GLOBAL MONITORING PROTOCOLS...', type: 'output' },
-        { text: 'ALL SYSTEMS NOMINAL', type: 'success' },
-        { text: 'LAUNCHING USER INTERFACE...', type: 'output' },
-      ];
-      
-      await simulateCommandOutput(logRef.current, secondPhase, 150);
-      
-      // Set progress to almost complete
-      setProgress(80);
-      
-      // Final boot messages
-      const finalPhase = [
-        { text: 'RENDERING DASHBOARD ELEMENTS...', type: 'output' },
-        { text: 'INITIALIZING COMMAND INTERFACES...', type: 'output' },
-        { text: 'SYSTEM STARTUP COMPLETE', type: 'success' },
-        { text: '>> ACCESS GRANTED <<', type: 'success' },
-      ];
-      
-      await simulateCommandOutput(logRef.current, finalPhase, 200);
-      
-      // Complete progress
-      setProgress(100);
-      
-      // Play success sound
+    if (!formData.description.trim()) {
+      playError();
+      return;
+    }
+    
+    if (isEditing && editId) {
+      // Update existing account
+      dispatch({
+        type: 'UPDATE_ACCOUNT',
+        payload: {
+          id: editId,
+          ...formData,
+        },
+      });
       playSuccess();
-      
-      // Transition to dashboard after a delay
-      setTimeout(() => {
-        dispatch({ type: 'SET_STATE', payload: AppState.DASHBOARD });
-      }, 1500);
-    };
+    } else {
+      // Add new account
+      dispatch({
+        type: 'ADD_ACCOUNT',
+        payload: {
+          id: uuidv4(),
+          ...formData,
+        },
+      });
+      playSuccess();
+    }
     
-    bootSystem();
-    
-    // Keyboard sound effects for immersion
-    const interval = setInterval(() => {
-      if (progress < 100) {
-        playKeypress();
-      }
-    }, 500);
-    
-    return () => {
-      clearInterval(interval);
-    };
-  }, [dispatch, playBoot, playKeypress, playSuccess, state.username]);
-
+    // Reset form
+    setFormData({
+      date: new Date().toISOString().split('T')[0],
+      amount: 0,
+      type: 'income',
+      description: '',
+    });
+    setIsEditing(false);
+    setEditId(null);
+    setShowForm(false);
+  };
+  
+  // Handle edit button click
+  const handleEdit = (account: Account) => {
+    setFormData({
+      date: account.date,
+      amount: account.amount,
+      type: account.type,
+      description: account.description,
+    });
+    setIsEditing(true);
+    setEditId(account.id);
+    setShowForm(true);
+    playKeypress();
+  };
+  
+  // Handle delete button click
+  const handleDelete = (id: string) => {
+    if (window.confirm('Are you sure you want to delete this transaction?')) {
+      dispatch({ type: 'DELETE_ACCOUNT', payload: id });
+      playSuccess();
+    }
+  };
+  
+  // Calculate totals
+  const totalIncome = state.accounts.reduce(
+    (sum, account) => account.type === 'income' ? sum + account.amount : sum,
+    0
+  );
+  
+  const totalExpense = state.accounts.reduce(
+    (sum, account) => account.type === 'expense' ? sum + account.amount : sum,
+    0
+  );
+  
+  const balance = totalIncome - totalExpense;
+  
   return (
-    <div className="min-h-screen bg-hacker-dark flex flex-col items-center justify-center p-4 overflow-hidden">
+    <div className="min-h-screen bg-hacker-dark flex flex-col p-4 overflow-hidden">
       <div className="scanlines"></div>
       
-      <div className="fixed top-0 left-0 w-full h-2 bg-hacker-dark">
-        <div 
-          className="h-full bg-hacker-neon transition-all duration-500 ease-out"
-          style={{ width: `${progress}%` }}
-        ></div>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-hacker-neon font-mono text-xl">Accounts Ledger</h1>
+        <div>
+          <button
+            onClick={() => {
+              setShowForm(!showForm);
+              setIsEditing(false);
+              setEditId(null);
+              setFormData({
+                date: new Date().toISOString().split('T')[0],
+                amount: 0,
+                type: 'income',
+                description: '',
+              });
+              playKeypress();
+            }}
+            className="hacker-button mr-2"
+          >
+            {showForm ? 'Cancel' : 'Add Transaction'}
+          </button>
+          <button
+            onClick={() => dispatch({ type: 'SET_STATE', payload: AppState.COMMAND_CONSOLE })}
+            className="hacker-button"
+          >
+            Terminal
+          </button>
+        </div>
       </div>
       
-      <div className="w-full max-w-3xl relative z-10">
-        <div className="glass-panel p-4 mb-4 flex justify-between items-center">
-          <div className="text-hacker-neon/80 font-mono text-sm">
-            SYSTEM BOOT SEQUENCE
-          </div>
-          <div className="text-hacker-neon/80 font-mono text-sm">
-            {progress}% COMPLETE
-          </div>
+      {showForm && (
+        <div className="glass-panel p-4 mb-4 animate-fade-in">
+          <h2 className="text-hacker-neon font-mono text-lg mb-4">
+            {isEditing ? 'Edit Transaction' : 'New Transaction'}
+          </h2>
+          
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-hacker-neon/70 text-sm font-mono mb-1">
+                Date
+              </label>
+              <input
+                type="date"
+                name="date"
+                value={formData.date}
+                onChange={handleChange}
+                className="terminal-input w-full px-3 py-2"
+                required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-hacker-neon/70 text-sm font-mono mb-1">
+                Amount
+              </label>
+              <input
+                type="number"
+                name="amount"
+                value={formData.amount || ''}
+                onChange={handleChange}
+                step="0.01"
+                className="terminal-input w-full px-3 py-2"
+                required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-hacker-neon/70 text-sm font-mono mb-1">
+                Type
+              </label>
+              <select
+                name="type"
+                value={formData.type}
+                onChange={handleChange}
+                className="terminal-input w-full px-3 py-2 bg-hacker-dark"
+                required
+              >
+                <option value="income">Income</option>
+                <option value="expense">Expense</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-hacker-neon/70 text-sm font-mono mb-1">
+                Description
+              </label>
+              <input
+                type="text"
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                className="terminal-input w-full px-3 py-2"
+                required
+              />
+            </div>
+            
+            <div className="md:col-span-2 flex justify-end mt-2">
+              <button type="submit" className="hacker-button">
+                {isEditing ? 'Update' : 'Save'}
+              </button>
+            </div>
+          </form>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2">
-            <div 
-              ref={logRef} 
-              className="command-log h-[60vh] text-xs md:text-sm overflow-y-auto no-scrollbar"
-            ></div>
+      )}
+      
+      <div className="glass-panel p-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+          <div>
+            <h3 className="text-hacker-neon/70 text-sm font-mono">Total Income</h3>
+            <p className="text-green-400 font-mono text-lg">
+              ${totalIncome.toFixed(2)}
+            </p>
           </div>
           
-          <div className="flex flex-col justify-center items-center">
-            {showEarth ? (
-              <div className="animate-fade-in">
-                <EarthGlobe />
-                <div className="mt-4 text-center">
-                  <div className="text-hacker-neon/80 font-mono text-xs animate-pulse">
-                    GLOBAL NETWORK ACTIVE
-                  </div>
-                  <div className="text-white/50 font-mono text-xs mt-1">
-                    SECURE UPLINK ESTABLISHED
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="h-full flex items-center justify-center">
-                <div className="animate-spin h-16 w-16 border-t-2 border-b-2 border-hacker-neon rounded-full"></div>
-              </div>
-            )}
+          <div>
+            <h3 className="text-hacker-neon/70 text-sm font-mono">Total Expenses</h3>
+            <p className="text-hacker-red font-mono text-lg">
+              ${totalExpense.toFixed(2)}
+            </p>
+          </div>
+          
+          <div>
+            <h3 className="text-hacker-neon/70 text-sm font-mono">Balance</h3>
+            <p className={`font-mono text-lg ${balance >= 0 ? 'text-green-400' : 'text-hacker-red'}`}>
+              ${balance.toFixed(2)}
+            </p>
           </div>
         </div>
+      </div>
+      
+      <div className="flex-grow glass-panel p-2 relative overflow-x-auto">
+        {state.accounts.length > 0 ? (
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-hacker-neon/30">
+                <th className="text-hacker-neon font-mono px-4 py-2">Date</th>
+                <th className="text-hacker-neon font-mono px-4 py-2">Description</th>
+                <th className="text-hacker-neon font-mono px-4 py-2">Type</th>
+                <th className="text-hacker-neon font-mono px-4 py-2 text-right">Amount</th>
+                <th className="text-hacker-neon font-mono px-4 py-2 text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {state.accounts.map(account => (
+                <tr 
+                  key={account.id} 
+                  className="border-b border-hacker-dark hover:bg-hacker-neon/5 transition-colors"
+                >
+                  <td className="text-white/80 font-mono px-4 py-2">{account.date}</td>
+                  <td className="text-white/80 font-mono px-4 py-2">{account.description}</td>
+                  <td className="font-mono px-4 py-2">
+                    <span 
+                      className={`px-2 py-1 rounded text-xs ${
+                        account.type === 'income' 
+                          ? 'bg-green-900/30 text-green-400' 
+                          : 'bg-red-900/30 text-hacker-red'
+                      }`}
+                    >
+                      {account.type}
+                    </span>
+                  </td>
+                  <td className={`font-mono px-4 py-2 text-right ${
+                    account.type === 'income' ? 'text-green-400' : 'text-hacker-red'
+                  }`}>
+                    ${account.amount.toFixed(2)}
+                  </td>
+                  <td className="px-4 py-2 text-center">
+                    <button
+                      onClick={() => handleEdit(account)}
+                      className="text-hacker-neon hover:text-hacker-neon/70 mr-2"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(account.id)}
+                      className="text-hacker-red hover:text-hacker-red/70"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="flex justify-center items-center h-32 text-hacker-neon/50 font-mono">
+            No transactions found. Add one to get started.
+          </div>
+        )}
       </div>
       
       <div className="port-display">
@@ -160,4 +307,4 @@ const BootSequence: React.FC = () => {
   );
 };
 
-export default BootSequence;
+export default AccountsTable;

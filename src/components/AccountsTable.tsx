@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAppContext, AppState, Account } from '../context/AppContext';
 import { useSound } from '../hooks/useSound';
@@ -19,7 +18,6 @@ const AccountsTable: React.FC = () => {
   const [editId, setEditId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   
-  // Handle input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -29,7 +27,6 @@ const AccountsTable: React.FC = () => {
     playKeypress();
   };
   
-  // Handle form submit
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -39,7 +36,6 @@ const AccountsTable: React.FC = () => {
     }
     
     if (isEditing && editId) {
-      // Update existing account
       dispatch({
         type: 'UPDATE_ACCOUNT',
         payload: {
@@ -49,7 +45,6 @@ const AccountsTable: React.FC = () => {
       });
       playSuccess();
     } else {
-      // Add new account
       dispatch({
         type: 'ADD_ACCOUNT',
         payload: {
@@ -60,7 +55,6 @@ const AccountsTable: React.FC = () => {
       playSuccess();
     }
     
-    // Reset form
     setFormData({
       date: new Date().toISOString().split('T')[0],
       amount: 0,
@@ -72,7 +66,6 @@ const AccountsTable: React.FC = () => {
     setShowForm(false);
   };
   
-  // Handle edit button click
   const handleEdit = (account: Account) => {
     setFormData({
       date: account.date,
@@ -86,7 +79,6 @@ const AccountsTable: React.FC = () => {
     playKeypress();
   };
   
-  // Handle delete button click
   const handleDelete = (id: string) => {
     if (window.confirm('Are you sure you want to delete this transaction?')) {
       dispatch({ type: 'DELETE_ACCOUNT', payload: id });
@@ -94,7 +86,6 @@ const AccountsTable: React.FC = () => {
     }
   };
   
-  // Calculate totals
   const totalIncome = state.accounts.reduce(
     (sum, account) => account.type === 'income' ? sum + account.amount : sum,
     0
