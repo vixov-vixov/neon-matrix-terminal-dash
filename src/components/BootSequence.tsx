@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAppContext, AppState } from '../context/AppContext';
 import { useSound } from '../hooks/useSound';
@@ -19,7 +20,7 @@ const BootSequence: React.FC = () => {
 
   // Generate a random duration between 10 and 60 seconds (in milliseconds)
   const totalDuration = Math.floor(Math.random() * (60000 - 10000) + 10000);
-  const intervalTime = Math.floor(totalDuration / (16 * 4)); // 16 total steps (4 phases * 4 progress updates per phase)
+  const intervalTime = Math.floor(totalDuration / (16)); // 16 total steps (4 phases * 4 progress updates per phase)
 
   // Simulate boot progress
   useEffect(() => {
@@ -54,8 +55,15 @@ const BootSequence: React.FC = () => {
       // Stop interval when all phases are complete
       if (phase > 4) {
         clearInterval(interval);
-        playTransition();
-        dispatch({ type: 'SET_STATE', payload: AppState.VIRTUAL_ASSISTANT });
+        
+        // Make sure we're setting authentication to true before changing state
+        dispatch({ type: 'SET_AUTHENTICATED', payload: true });
+        
+        // Small delay to ensure auth state is set before redirecting
+        setTimeout(() => {
+          playTransition();
+          dispatch({ type: 'SET_STATE', payload: AppState.VIRTUAL_ASSISTANT });
+        }, 500);
       }
     }, intervalTime);
 
