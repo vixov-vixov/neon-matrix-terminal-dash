@@ -7,6 +7,7 @@ import Dashboard from '../components/Dashboard';
 import CommandConsole from '../components/CommandConsole';
 import AccountsTable from '../components/AccountsTable';
 import CommandPalette from '../components/CommandPalette';
+import VirtualAssistant from '../components/VirtualAssistant';
 
 // Content component that displays the current app state
 const Content: React.FC = () => {
@@ -18,6 +19,8 @@ const Content: React.FC = () => {
       return <Login />;
     case AppState.BOOT_SEQUENCE:
       return <BootSequence />;
+    case AppState.VIRTUAL_ASSISTANT:
+      return <VirtualAssistant />;
     case AppState.DASHBOARD:
       return <Dashboard />;
     case AppState.COMMAND_CONSOLE:

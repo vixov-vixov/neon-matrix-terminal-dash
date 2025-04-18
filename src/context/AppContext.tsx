@@ -5,6 +5,7 @@ import React, { createContext, useContext, useReducer, useEffect } from 'react';
 export enum AppState {
   LOGIN = 'login',
   BOOT_SEQUENCE = 'boot_sequence',
+  VIRTUAL_ASSISTANT = 'virtual_assistant',
   DASHBOARD = 'dashboard',
   COMMAND_CONSOLE = 'command_console',
   ACCOUNTS_TABLE = 'accounts_table',
