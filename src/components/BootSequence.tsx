@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAppContext, AppState } from '../context/AppContext';
 import { useSound } from '../hooks/useSound';
@@ -18,23 +17,30 @@ const BootSequence: React.FC = () => {
     4: ['Starting user interface...', 'Launching virtual assistant...', 'System ready.'],
   };
 
+  // Generate a random duration between 10 and 60 seconds (in milliseconds)
+  const totalDuration = Math.floor(Math.random() * (60000 - 10000) + 10000);
+  const intervalTime = Math.floor(totalDuration / (16 * 4)); // 16 total steps (4 phases * 4 progress updates per phase)
+
   // Simulate boot progress
   useEffect(() => {
     let messageIndex = 0;
     let progress = 0;
     let phase = 1;
 
+    // Play boot sound at the start
+    playBoot();
+
     const interval = setInterval(() => {
       // Add new boot message
       if (phaseMessages[phase] && messageIndex < phaseMessages[phase].length) {
         setBootMessages(prev => [...prev, phaseMessages[phase][messageIndex]]);
-        playKeypress(); // Changed from playBlip to playKeypress since that exists in the hook
+        playKeypress();
         messageIndex++;
       }
 
       // Update progress value
       if (progress < 100) {
-        progress += 20;
+        progress += 25; // Increase by 25% each time to complete in 4 steps per phase
         setProgressValue(progress);
       } else {
         // Move to the next boot phase
@@ -43,34 +49,18 @@ const BootSequence: React.FC = () => {
         phase++;
         setBootPhase(phase);
         setProgressValue(progress);
-
-        // Play boot sound at the start of the sequence
-        if (phase === 2) {
-          playBoot();
-        }
       }
 
       // Stop interval when all phases are complete
       if (phase > 4) {
         clearInterval(interval);
-      }
-    }, 750);
-
-    return () => clearInterval(interval);
-  }, [playKeypress, playBoot, playTransition]);
-
-  // Complete boot sequence
-  useEffect(() => {
-    // If all boot phases are complete
-    if (bootPhase === 4 && progressValue >= 100) {
-      const timer = setTimeout(() => {
         playTransition();
         dispatch({ type: 'SET_STATE', payload: AppState.VIRTUAL_ASSISTANT });
-      }, 1000);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [bootPhase, progressValue, dispatch, playTransition]);
+      }
+    }, intervalTime);
+
+    return () => clearInterval(interval);
+  }, [dispatch, playKeypress, playBoot, playTransition]);
 
   return (
     <div className="min-h-screen bg-hacker-dark text-white flex flex-col items-center justify-center p-4 overflow-hidden relative">
