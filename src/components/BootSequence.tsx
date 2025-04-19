@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext, AppState } from '../context/AppContext';
 import { useSound } from '../hooks/useSound';
+import { Progress } from "@/components/ui/progress";
 
 const BootSequence: React.FC = () => {
   const [bootPhase, setBootPhase] = useState(1);
@@ -18,89 +19,103 @@ const BootSequence: React.FC = () => {
     4: ['Starting user interface...', 'Launching virtual assistant...', 'System ready.'],
   };
 
-  // Generate a random duration between 10 and 30 seconds (in milliseconds)
-  // Reduced from 60 to 30 seconds max to improve user experience
-  const totalDuration = Math.floor(Math.random() * (30000 - 10000) + 10000);
-  const intervalTime = Math.floor(totalDuration / (16)); // 16 total steps (4 phases * 4 progress updates per phase)
+  // Fixed shorter duration to prevent getting stuck (10-20 seconds)
+  const totalDuration = Math.floor(Math.random() * (20000 - 10000) + 10000);
+  const messagesPerPhase = 3; // Each phase has 3 messages
+  const totalMessages = Object.values(phaseMessages).flat().length;
+  const messageInterval = totalDuration / totalMessages;
 
-  // Simulate boot progress
+  // Simulate boot progress with improved error handling
   useEffect(() => {
     console.log("Boot sequence started, duration will be", totalDuration, "ms");
-    let messageIndex = 0;
-    let progress = 0;
-    let phase = 1;
-    let shouldContinue = true; // Flag to handle component unmounting
+    
+    let currentPhase = 1;
+    let currentMessage = 0;
+    let totalMessagesShown = 0;
+    let mountedRef = true;
 
-    // Try to play boot sound at the start, but don't block if it fails
+    // Try to play boot sound
     try {
       playBoot();
     } catch (error) {
-      console.error("Boot sound failed to play:", error);
-      // Continue boot sequence even if sound fails
+      console.log("Boot sound failed to play, continuing anyway");
     }
 
+    // Add first message immediately
+    setBootMessages([phaseMessages[1][0]]);
+    totalMessagesShown++;
+    
+    // Use message-based intervals instead of progress-based
     const interval = setInterval(() => {
-      if (!shouldContinue) return; // Skip if component is unmounting
-
-      // Add new boot message
-      if (phaseMessages[phase] && messageIndex < phaseMessages[phase].length) {
-        setBootMessages(prev => [...prev, phaseMessages[phase][messageIndex]]);
+      if (!mountedRef) return;
+      
+      totalMessagesShown++;
+      currentMessage++;
+      
+      // Check if we need to move to next phase
+      if (currentMessage >= messagesPerPhase && currentPhase < 4) {
+        currentPhase++;
+        currentMessage = 0;
+        setBootPhase(currentPhase);
+      }
+      
+      // Add the next message if available
+      if (phaseMessages[currentPhase] && phaseMessages[currentPhase][currentMessage]) {
+        setBootMessages(prev => [...prev, phaseMessages[currentPhase][currentMessage]]);
         try {
           playKeypress();
         } catch (error) {
-          console.error("Keypress sound failed to play:", error);
+          console.log("Keypress sound failed, continuing");
         }
-        messageIndex++;
       }
-
-      // Update progress value
-      if (progress < 100) {
-        progress += 25; // Increase by 25% each time to complete in 4 steps per phase
-        setProgressValue(progress);
-      } else {
-        // Move to the next boot phase
-        messageIndex = 0;
-        progress = 0;
-        phase++;
-        setBootPhase(phase);
-        setProgressValue(progress);
-      }
-
-      // Stop interval when all phases are complete
-      if (phase > 4) {
+      
+      // Update progress based on total messages shown
+      const progress = Math.min(100, Math.floor((totalMessagesShown / totalMessages) * 100));
+      setProgressValue(progress);
+      
+      // If we've shown all messages, complete the boot sequence
+      if (progress >= 100) {
         clearInterval(interval);
-        console.log("Boot sequence completed, transitioning to Virtual Assistant");
-        
-        // First set authentication to true
-        dispatch({ type: 'SET_AUTHENTICATED', payload: true });
-        console.log("Authentication set to true");
-        
-        // Then transition to virtual assistant with a longer delay
-        setTimeout(() => {
-          if (!shouldContinue) return; // Skip if component is unmounting
-          
-          try {
-            playTransition();
-          } catch (error) {
-            console.error("Transition sound failed to play:", error);
-          }
-          
-          // Ensure we're transitioning to virtual assistant regardless of sound issues
-          console.log("Changing state to VIRTUAL_ASSISTANT");
-          dispatch({ type: 'SET_STATE', payload: AppState.VIRTUAL_ASSISTANT });
-          setTimeout(() => {
-            console.log("Current state after transition:", state.currentState);
-          }, 100);
-        }, 1500); // Increased delay for more stability
+        finishBoot();
       }
-    }, intervalTime);
-
-    // Cleanup function to prevent state updates after unmounting
+    }, messageInterval);
+    
+    // Function to handle boot completion
+    const finishBoot = () => {
+      if (!mountedRef) return;
+      
+      console.log("Boot sequence completed, authentication starting...");
+      
+      // Set authenticated first
+      dispatch({ type: 'SET_AUTHENTICATED', payload: true });
+      console.log("Authentication set to true");
+      
+      // Wait a moment then redirect
+      setTimeout(() => {
+        if (!mountedRef) return;
+        
+        try {
+          playTransition();
+        } catch (error) {
+          console.log("Transition sound failed, continuing");
+        }
+        
+        console.log("Redirecting to VIRTUAL_ASSISTANT");
+        dispatch({ type: 'SET_STATE', payload: AppState.VIRTUAL_ASSISTANT });
+        
+        // Verify the state change happened
+        setTimeout(() => {
+          console.log("Current state after transition:", state.currentState);
+        }, 100);
+      }, 2000);
+    };
+    
+    // Cleanup - prevent state updates after unmounting
     return () => {
-      shouldContinue = false;
+      mountedRef = false;
       clearInterval(interval);
     };
-  }, [dispatch, playKeypress, playBoot, playTransition]);
+  }, []);
 
   return (
     <div className="min-h-screen bg-hacker-dark text-white flex flex-col items-center justify-center p-4 overflow-hidden relative">
@@ -131,13 +146,11 @@ const BootSequence: React.FC = () => {
             ))}
             
             <div className="relative pt-1">
-              <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-gray-900">
-                <div
-                  style={{ width: `${progressValue}%` }}
-                  className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-hacker-neon transition-all duration-500"
-                ></div>
-              </div>
-              <div className="text-right text-xs text-hacker-neon/50 font-mono">
+              <Progress 
+                value={progressValue} 
+                className="h-2 w-full bg-gray-900"
+              />
+              <div className="text-right text-xs text-hacker-neon/50 font-mono mt-1">
                 {progressValue}%
               </div>
             </div>
