@@ -7,7 +7,7 @@ const BootSequence: React.FC = () => {
   const [bootPhase, setBootPhase] = useState(1);
   const [progressValue, setProgressValue] = useState(0);
   const [bootMessages, setBootMessages] = useState<string[]>([]);
-  const { dispatch } = useAppContext();
+  const { state, dispatch } = useAppContext();
   const { playKeypress, playTransition, playBoot } = useSound();
 
   // Boot messages for each phase
@@ -24,18 +24,28 @@ const BootSequence: React.FC = () => {
 
   // Simulate boot progress
   useEffect(() => {
+    console.log("Boot sequence started, duration will be", totalDuration, "ms");
     let messageIndex = 0;
     let progress = 0;
     let phase = 1;
 
-    // Play boot sound at the start
-    playBoot();
+    // Try to play boot sound at the start, but don't block if it fails
+    try {
+      playBoot();
+    } catch (error) {
+      console.error("Boot sound failed to play:", error);
+      // Continue boot sequence even if sound fails
+    }
 
     const interval = setInterval(() => {
       // Add new boot message
       if (phaseMessages[phase] && messageIndex < phaseMessages[phase].length) {
         setBootMessages(prev => [...prev, phaseMessages[phase][messageIndex]]);
-        playKeypress();
+        try {
+          playKeypress();
+        } catch (error) {
+          console.error("Keypress sound failed to play:", error);
+        }
         messageIndex++;
       }
 
@@ -55,15 +65,23 @@ const BootSequence: React.FC = () => {
       // Stop interval when all phases are complete
       if (phase > 4) {
         clearInterval(interval);
+        console.log("Boot sequence completed, transitioning to Virtual Assistant");
         
-        // Make sure we're setting authentication to true before changing state
+        // First set authentication to true
         dispatch({ type: 'SET_AUTHENTICATED', payload: true });
         
-        // Small delay to ensure auth state is set before redirecting
+        // Then transition to virtual assistant with a delay
         setTimeout(() => {
-          playTransition();
+          try {
+            playTransition();
+          } catch (error) {
+            console.error("Transition sound failed to play:", error);
+          }
+          
+          // Ensure we're transitioning to virtual assistant regardless of sound issues
           dispatch({ type: 'SET_STATE', payload: AppState.VIRTUAL_ASSISTANT });
-        }, 500);
+          console.log("State changed to:", AppState.VIRTUAL_ASSISTANT);
+        }, 1000); // Increased delay for more stability
       }
     }, intervalTime);
 
