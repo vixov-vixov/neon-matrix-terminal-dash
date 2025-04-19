@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 
 // Application states
 export enum AppState {
@@ -123,25 +123,32 @@ const AppContext = createContext<{
 // Provider component
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
+  const timerRef = useRef<number | null>(null);
 
   // Load accounts from localStorage on initial render
   useEffect(() => {
     dispatch({ type: 'LOAD_ACCOUNTS' });
   }, []);
 
-  // Set up inactivity timer
+  // Set up inactivity timer - fixed to prevent infinite loop
   useEffect(() => {
     const resetTimer = () => {
-      if (state.inactivityTimer) {
-        clearTimeout(state.inactivityTimer);
+      // First clear any existing timer
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
       }
 
+      // Only set a new timer if authenticated
       if (state.isAuthenticated) {
         const timer = window.setTimeout(() => {
+          console.log("Inactivity timeout triggered - logging out");
           dispatch({ type: 'SET_STATE', payload: AppState.LOGIN });
           dispatch({ type: 'SET_AUTHENTICATED', payload: false });
         }, 3 * 60 * 1000); // 3 minutes
-        dispatch({ type: 'RESET_INACTIVITY_TIMER', payload: timer as unknown as number });
+        
+        // Store timer ID in ref instead of state to avoid infinite loop
+        timerRef.current = timer as unknown as number;
       }
     };
 
@@ -157,14 +164,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Cleanup
     return () => {
-      if (state.inactivityTimer) {
-        clearTimeout(state.inactivityTimer);
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
       }
       events.forEach(event => {
         document.removeEventListener(event, resetTimer);
       });
     };
-  }, [state.isAuthenticated, state.inactivityTimer]);
+  }, [state.isAuthenticated]); // Only depend on authentication state
 
   return (
     <AppContext.Provider value={{ state, dispatch }}>

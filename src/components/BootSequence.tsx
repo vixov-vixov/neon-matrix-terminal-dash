@@ -18,8 +18,9 @@ const BootSequence: React.FC = () => {
     4: ['Starting user interface...', 'Launching virtual assistant...', 'System ready.'],
   };
 
-  // Generate a random duration between 10 and 60 seconds (in milliseconds)
-  const totalDuration = Math.floor(Math.random() * (60000 - 10000) + 10000);
+  // Generate a random duration between 10 and 30 seconds (in milliseconds)
+  // Reduced from 60 to 30 seconds max to improve user experience
+  const totalDuration = Math.floor(Math.random() * (30000 - 10000) + 10000);
   const intervalTime = Math.floor(totalDuration / (16)); // 16 total steps (4 phases * 4 progress updates per phase)
 
   // Simulate boot progress
@@ -28,6 +29,7 @@ const BootSequence: React.FC = () => {
     let messageIndex = 0;
     let progress = 0;
     let phase = 1;
+    let shouldContinue = true; // Flag to handle component unmounting
 
     // Try to play boot sound at the start, but don't block if it fails
     try {
@@ -38,6 +40,8 @@ const BootSequence: React.FC = () => {
     }
 
     const interval = setInterval(() => {
+      if (!shouldContinue) return; // Skip if component is unmounting
+
       // Add new boot message
       if (phaseMessages[phase] && messageIndex < phaseMessages[phase].length) {
         setBootMessages(prev => [...prev, phaseMessages[phase][messageIndex]]);
@@ -69,9 +73,12 @@ const BootSequence: React.FC = () => {
         
         // First set authentication to true
         dispatch({ type: 'SET_AUTHENTICATED', payload: true });
+        console.log("Authentication set to true");
         
-        // Then transition to virtual assistant with a delay
+        // Then transition to virtual assistant with a longer delay
         setTimeout(() => {
+          if (!shouldContinue) return; // Skip if component is unmounting
+          
           try {
             playTransition();
           } catch (error) {
@@ -79,13 +86,20 @@ const BootSequence: React.FC = () => {
           }
           
           // Ensure we're transitioning to virtual assistant regardless of sound issues
+          console.log("Changing state to VIRTUAL_ASSISTANT");
           dispatch({ type: 'SET_STATE', payload: AppState.VIRTUAL_ASSISTANT });
-          console.log("State changed to:", AppState.VIRTUAL_ASSISTANT);
-        }, 1000); // Increased delay for more stability
+          setTimeout(() => {
+            console.log("Current state after transition:", state.currentState);
+          }, 100);
+        }, 1500); // Increased delay for more stability
       }
     }, intervalTime);
 
-    return () => clearInterval(interval);
+    // Cleanup function to prevent state updates after unmounting
+    return () => {
+      shouldContinue = false;
+      clearInterval(interval);
+    };
   }, [dispatch, playKeypress, playBoot, playTransition]);
 
   return (
