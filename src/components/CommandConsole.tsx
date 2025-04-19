@@ -49,6 +49,7 @@ const CommandConsole: React.FC = () => {
 - settings: Adjust system settings
 - clear: Clear the console display
 - exit: Return to dashboard
+- hello/hi/hey: Simple greeting command
 - help: Display this help message`, 'output');
         playSuccess();
         break;
@@ -112,6 +113,14 @@ const CommandConsole: React.FC = () => {
         appendToLog('Wake up, Neo...', 'output');
         appendToLog('The Matrix has you...', 'output');
         appendToLog('Follow the white rabbit.', 'output');
+        playSuccess();
+        break;
+
+      // Add greeting commands
+      case 'hello':
+      case 'hi':
+      case 'hey':
+        appendToLog(`Greetings, ${state.username}. How may I assist you today?`, 'success');
         playSuccess();
         break;
         
