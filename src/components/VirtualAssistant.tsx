@@ -1,8 +1,10 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useAppContext, AppState } from '../context/AppContext';
 import { useSound } from '../hooks/useSound';
 import MatrixRain from './MatrixRain';
+import AssistantHeader from './virtual-assistant/AssistantHeader';
+import ChatMessage from './virtual-assistant/ChatMessage';
+import ChatInput from './virtual-assistant/ChatInput';
 
 const VirtualAssistant: React.FC = () => {
   const [userInput, setUserInput] = useState('');
@@ -16,12 +18,10 @@ const VirtualAssistant: React.FC = () => {
   const { state, dispatch } = useAppContext();
   const { playKeypress, playTransition, playSuccess } = useSound();
 
-  // Auto-scroll to bottom of chat
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [conversation, typingText]);
 
-  // Typing animation effect
   useEffect(() => {
     if (conversation.length > 0 && !conversation[conversation.length - 1].isUser) {
       const fullText = conversation[conversation.length - 1].text;
@@ -29,14 +29,12 @@ const VirtualAssistant: React.FC = () => {
         const timer = setTimeout(() => {
           setTypingText(fullText.substring(0, currentTypingIndex + 1));
           setCurrentTypingIndex(prev => prev + 1);
-        }, 25); // Speed of typing
-
+        }, 25);
         return () => clearTimeout(timer);
       }
     }
   }, [conversation, currentTypingIndex]);
 
-  // Reset typing animation when new message is added
   useEffect(() => {
     if (conversation.length > 0 && !conversation[conversation.length - 1].isUser) {
       setTypingText('');
@@ -52,7 +50,6 @@ const VirtualAssistant: React.FC = () => {
   const processCommand = (command: string) => {
     const normalizedCommand = command.toLowerCase().trim();
     
-    // Check for account-related commands
     if (
       normalizedCommand.includes('account') || 
       normalizedCommand.includes('transaction') ||
@@ -68,7 +65,6 @@ const VirtualAssistant: React.FC = () => {
       return;
     }
     
-    // Check for dashboard commands
     if (
       normalizedCommand.includes('dashboard') || 
       normalizedCommand.includes('main screen') ||
@@ -83,7 +79,6 @@ const VirtualAssistant: React.FC = () => {
       return;
     }
     
-    // Check for terminal/console commands
     if (
       normalizedCommand.includes('terminal') || 
       normalizedCommand.includes('console') ||
@@ -98,7 +93,6 @@ const VirtualAssistant: React.FC = () => {
       return;
     }
     
-    // Matrix Easter Egg
     if (
       normalizedCommand.includes('matrix') || 
       normalizedCommand.includes('neo')
@@ -108,7 +102,6 @@ const VirtualAssistant: React.FC = () => {
       return;
     }
     
-    // Sound toggle command
     if (
       normalizedCommand.includes('mute') || 
       normalizedCommand.includes('sound off') ||
@@ -124,7 +117,6 @@ const VirtualAssistant: React.FC = () => {
       return;
     }
     
-    // Help command
     if (
       normalizedCommand.includes('help') || 
       normalizedCommand.includes('what can you do') ||
@@ -137,7 +129,6 @@ const VirtualAssistant: React.FC = () => {
       return;
     }
     
-    // Logout command
     if (
       normalizedCommand.includes('logout') || 
       normalizedCommand.includes('sign out') ||
@@ -153,7 +144,6 @@ const VirtualAssistant: React.FC = () => {
       return;
     }
     
-    // Default response for unrecognized commands
     const responses = [
       "I'm sorry, I don't understand that command. Try 'help' for a list of available commands.",
       "Command not recognized. Would you like to access 'accounts', 'dashboard', or 'terminal'?",
@@ -176,7 +166,6 @@ const VirtualAssistant: React.FC = () => {
     setUserInput('');
     setIsProcessing(true);
     
-    // Simulate AI processing time
     setTimeout(() => {
       processCommand(userMessage);
       setIsProcessing(false);
@@ -189,28 +178,8 @@ const VirtualAssistant: React.FC = () => {
       {state.isMatrixRainActive && <MatrixRain />}
       <div className="scanlines"></div>
       
-      {/* Header bar */}
-      <header className="glass-panel border-b-0 p-3 flex justify-between items-center">
-        <div className="text-hacker-neon font-mono text-lg tracking-wide">
-          JARVIS <span className="text-xs opacity-70">v3.8.2</span>
-        </div>
-        <div className="flex items-center space-x-4">
-          <div className="text-hacker-neon/70 font-mono text-sm">
-            USER: <span className="text-hacker-neon">{state.username.toUpperCase()}</span>
-          </div>
-          <button 
-            onClick={() => {
-              dispatch({ type: 'SET_STATE', payload: AppState.DASHBOARD });
-              playTransition();
-            }}
-            className="hacker-button py-1 px-3 text-sm"
-          >
-            DASHBOARD
-          </button>
-        </div>
-      </header>
+      <AssistantHeader />
       
-      {/* Main chat interface */}
       <div className="flex-grow p-4 flex flex-col relative z-10">
         <div className="glass-panel p-4 flex-grow flex flex-col">
           <div className="mb-4 border-b border-hacker-neon/20 pb-2">
@@ -220,63 +189,28 @@ const VirtualAssistant: React.FC = () => {
             </p>
           </div>
           
-          {/* Conversation display */}
           <div className="flex-grow overflow-y-auto mb-4 font-mono">
             {conversation.map((msg, index) => (
-              <div 
-                key={index} 
-                className={`mb-3 ${msg.isUser ? 'text-right' : ''}`}
-              >
-                <div 
-                  className={`inline-block rounded px-3 py-2 max-w-[80%] ${
-                    msg.isUser 
-                      ? 'bg-hacker-dark border border-hacker-neon/40 text-hacker-neon' 
-                      : 'bg-hacker-neon/10 text-white'
-                  }`}
-                >
-                  {index === conversation.length - 1 && !msg.isUser ? typingText : msg.text}
-                  {index === conversation.length - 1 && !msg.isUser && typingText.length < msg.text.length && (
-                    <span className="inline-block w-2 h-4 bg-hacker-neon ml-1 animate-pulse"></span>
-                  )}
-                </div>
-                <div className={`text-xs mt-1 ${msg.isUser ? 'text-hacker-neon/50' : 'text-white/50'}`}>
-                  {msg.isUser ? 'YOU' : 'JARVIS'} • {new Date().toLocaleTimeString()}
-                </div>
-              </div>
+              <ChatMessage
+                key={index}
+                text={msg.text}
+                isUser={msg.isUser}
+                typingText={index === conversation.length - 1 ? typingText : undefined}
+                isLatest={index === conversation.length - 1}
+              />
             ))}
             <div ref={chatEndRef} />
           </div>
           
-          {/* Input form */}
-          <form onSubmit={handleSubmit} className="mt-auto">
-            <div className="relative">
-              <input
-                type="text"
-                value={userInput}
-                onChange={handleInputChange}
-                disabled={isProcessing}
-                placeholder="Enter command or speak naturally..."
-                className="terminal-input w-full px-4 py-3 pr-20"
-                autoFocus
-              />
-              <button
-                type="submit"
-                disabled={isProcessing || !userInput.trim()}
-                className={`absolute right-2 top-1/2 transform -translate-y-1/2 hacker-button py-1 px-2 text-sm ${
-                  isProcessing || !userInput.trim() ? 'opacity-50' : ''
-                }`}
-              >
-                {isProcessing ? 'PROCESSING...' : 'SEND'}
-              </button>
-            </div>
-            <div className="mt-2 text-center text-hacker-neon/40 text-xs font-mono">
-              TRY: "open accounts", "help", "toggle matrix", or "logout"
-            </div>
-          </form>
+          <ChatInput
+            userInput={userInput}
+            isProcessing={isProcessing}
+            onInputChange={handleInputChange}
+            onSubmit={handleSubmit}
+          />
         </div>
       </div>
       
-      {/* Status indicators */}
       <div className="flex justify-between items-center p-2 text-xs font-mono text-hacker-neon/40">
         <div>NEURAL LINK: ACTIVE</div>
         <div className="flex items-center">

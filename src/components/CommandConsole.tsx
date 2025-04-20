@@ -3,6 +3,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAppContext, AppState } from '../context/AppContext';
 import { useSound } from '../hooks/useSound';
 import { getTimestamp } from '../utils/terminalEffects';
+import { processCommand } from '../utils/commands';
+import { appendLogMessage } from '../utils/logger';
+import ConsoleHeader from './command-console/ConsoleHeader';
+import ConsoleInput from './command-console/ConsoleInput';
+import ConsoleLog from './command-console/ConsoleLog';
 
 const CommandConsole: React.FC = () => {
   const [command, setCommand] = useState('');
@@ -24,163 +29,35 @@ const CommandConsole: React.FC = () => {
     playKeypress();
   };
 
-  const processCommand = (cmd: string) => {
-    setCommandHistory(prev => [...prev, cmd]);
-    setHistoryIndex(-1);
-    
-    dispatch({ type: 'ADD_COMMAND', payload: cmd });
-    
-    const lowerCmd = cmd.toLowerCase().trim();
-    
-    appendToLog(`<span class="text-hacker-cyan">$</span> ${cmd}`, 'input');
-    
-    switch (lowerCmd) {
-      case 'help':
-        appendToLog(`Available commands:
-- accounts: View and manage account transactions
-- system logs: View system activity logs
-- settings: Adjust system settings
-- assistant: Open AI virtual assistant
-- clear: Clear the console display
-- exit: Return to dashboard
-- hello/hi/hey: Simple greeting command
-- help: Display this help message`, 'output');
-        playSuccess();
-        break;
-        
-      case 'accounts':
-        playSuccess();
-        dispatch({ type: 'SET_STATE', payload: AppState.ACCOUNTS_TABLE });
-        appendToLog('Accessing accounts module...', 'output');
-        break;
-        
-      case 'system logs':
-        appendToLog('SYSTEM LOGS ACCESS - Displaying recent activity:', 'output');
-        appendToLog(state.commandHistory.slice(-10).map(cmd => 
-          `<span class="text-hacker-neon/60">[SYSTEM] ${cmd}</span>`
-        ).join('\n'), 'output');
-        playSuccess();
-        break;
-        
-      case 'settings':
-        appendToLog('SETTINGS MODULE - Options:', 'output');
-        appendToLog(`- Sound: ${state.soundEnabled ? 'ENABLED' : 'DISABLED'}
-- Developer Mode: ${state.isDeveloperMode ? 'ENABLED' : 'DISABLED'}
-- Matrix Effect: ${state.isMatrixRainActive ? 'ENABLED' : 'DISABLED'}`, 'output');
-        appendToLog('Use "toggle sound", "toggle dev", or "toggle matrix" to change settings.', 'output');
-        playSuccess();
-        break;
-        
-      case 'toggle sound':
-        dispatch({ type: 'TOGGLE_SOUND' });
-        appendToLog(`Sound effects ${!state.soundEnabled ? 'ENABLED' : 'DISABLED'}`, 'success');
-        if (!state.soundEnabled) playSuccess();
-        break;
-        
-      case 'toggle dev':
-        dispatch({ type: 'TOGGLE_DEVELOPER_MODE' });
-        appendToLog(`Developer mode ${!state.isDeveloperMode ? 'ENABLED' : 'DISABLED'}`, 'success');
-        playSuccess();
-        break;
-        
-      case 'toggle matrix':
-        dispatch({ type: 'TOGGLE_MATRIX_RAIN' });
-        appendToLog(`Matrix effect ${!state.isMatrixRainActive ? 'ENABLED' : 'DISABLED'}`, 'success');
-        playSuccess();
-        break;
-        
-      case 'clear':
-        if (logRef.current) {
-          logRef.current.innerHTML = '';
-        }
-        playKeypress();
-        break;
-        
-      case 'exit':
-        dispatch({ type: 'SET_STATE', payload: AppState.DASHBOARD });
-        playSuccess();
-        break;
-        
-      case 'neo':
-        dispatch({ type: 'TOGGLE_MATRIX_RAIN' });
-        appendToLog('Wake up, Neo...', 'output');
-        appendToLog('The Matrix has you...', 'output');
-        appendToLog('Follow the white rabbit.', 'output');
-        playSuccess();
-        break;
-
-      case 'assistant':
-        playSuccess();
-        dispatch({ type: 'SET_STATE', payload: AppState.VIRTUAL_ASSISTANT });
-        appendToLog('Opening AI Virtual Assistant...', 'output');
-        break;
-
-      case 'hello':
-      case 'hi':
-      case 'hey':
-        appendToLog(`Greetings, ${state.username}. How may I assist you today?`, 'success');
-        playSuccess();
-        break;
-        
-      case '':
-        break;
-        
-      default:
-        if (lowerCmd.startsWith('echo ')) {
-          appendToLog(cmd.substring(5), 'output');
-          playSuccess();
-        } else {
-          appendToLog(`Command not recognized: "${cmd}"`, 'error');
-          appendToLog('Type "help" for available commands.', 'output');
-          playError();
-        }
-        break;
-    }
+  const appendToLog = (message: string, type: 'input' | 'output' | 'error' | 'success' = 'output') => {
+    if (!logRef.current) return;
+    appendLogMessage(logRef.current, message, type, getTimestamp());
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (command.trim()) {
-      processCommand(command);
+      setCommandHistory(prev => [...prev, command]);
+      setHistoryIndex(-1);
+      
+      dispatch({ type: 'ADD_COMMAND', payload: command });
+      
+      const shouldClear = processCommand(
+        command,
+        state,
+        dispatch,
+        appendToLog,
+        playSuccess,
+        playError,
+        playKeypress
+      );
+      
+      if (shouldClear && logRef.current) {
+        logRef.current.innerHTML = '';
+      }
+      
       setCommand('');
     }
-  };
-
-  const appendToLog = (message: string, type: 'input' | 'output' | 'error' | 'success' = 'output') => {
-    if (!logRef.current) return;
-    
-    const logItem = document.createElement('div');
-    logItem.className = 'mb-1 flex items-start';
-    
-    const timestamp = getTimestamp();
-    
-    if (type === 'input') {
-      logItem.innerHTML = `
-        <span class="log-timestamp mr-2">${timestamp}</span>
-        <span class="flex-grow"><span class="text-hacker-cyan">$</span> ${message}</span>
-      `;
-    } else if (type === 'error') {
-      logItem.innerHTML = `
-        <span class="log-timestamp mr-2">${timestamp}</span>
-        <span class="flex-grow text-hacker-red">${message}</span>
-      `;
-    } else if (type === 'success') {
-      logItem.innerHTML = `
-        <span class="log-timestamp mr-2">${timestamp}</span>
-        <span class="flex-grow text-green-400">${message}</span>
-      `;
-    } else {
-      const lines = message.split('\n');
-      logItem.innerHTML = lines.map(line => `
-        <div class="flex items-start">
-          <span class="log-timestamp mr-2">${timestamp}</span>
-          <span class="flex-grow">${line}</span>
-        </div>
-      `).join('');
-    }
-    
-    logRef.current.appendChild(logItem);
-    logRef.current.scrollTop = logRef.current.scrollHeight;
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -222,40 +99,15 @@ const CommandConsole: React.FC = () => {
   return (
     <div className="min-h-screen bg-hacker-dark flex flex-col p-4 overflow-hidden">
       <div className="scanlines"></div>
-      
-      <div className="flex items-center justify-between mb-2">
-        <h1 className="text-hacker-neon font-mono text-lg">Command Console</h1>
-        <button 
-          onClick={() => dispatch({ type: 'SET_STATE', payload: AppState.DASHBOARD })}
-          className="hacker-button py-1 px-3 text-sm"
-        >
-          Dashboard
-        </button>
-      </div>
-      
-      <div className="flex-grow glass-panel p-2 relative mb-2 overflow-hidden">
-        <div 
-          ref={logRef} 
-          className="command-log h-[calc(100vh-180px)] overflow-y-auto pb-4 no-scrollbar"
-        ></div>
-      </div>
-      
-      <form onSubmit={handleSubmit} className="glass-panel p-2 flex">
-        <span className="text-hacker-cyan font-mono self-center mr-2">$</span>
-        <input
-          ref={inputRef}
-          type="text"
-          value={command}
-          onChange={handleCommandChange}
-          onKeyDown={handleKeyDown}
-          placeholder="Enter command..."
-          className="terminal-input flex-grow bg-transparent border-none focus:ring-0"
-          autoComplete="off"
-          autoCorrect="off"
-          spellCheck="false"
-        />
-      </form>
-      
+      <ConsoleHeader />
+      <ConsoleLog logRef={logRef} />
+      <ConsoleInput
+        command={command}
+        onChange={handleCommandChange}
+        onKeyDown={handleKeyDown}
+        onSubmit={handleSubmit}
+        inputRef={inputRef}
+      />
       <div className="port-display">
         localhost:{window.location.port || '80'}
       </div>
@@ -264,4 +116,3 @@ const CommandConsole: React.FC = () => {
 };
 
 export default CommandConsole;
-
