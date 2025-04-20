@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAppContext, AppState } from '../context/AppContext';
 import { useSound } from '../hooks/useSound';
+import { processSharedCommand } from '../utils/commandProcessor';
 import MatrixRain from './MatrixRain';
 import AssistantHeader from './virtual-assistant/AssistantHeader';
 import ChatMessage from './virtual-assistant/ChatMessage';
@@ -50,6 +51,17 @@ const VirtualAssistant: React.FC = () => {
   const processCommand = (command: string) => {
     const normalizedCommand = command.toLowerCase().trim();
     
+    const wasSharedCommand = processSharedCommand({
+      command: normalizedCommand,
+      state,
+      dispatch,
+      onResponse: (text) => setConversation(prev => [...prev, { text, isUser: false }]),
+      playSuccess,
+      playTransition
+    });
+    
+    if (wasSharedCommand) return;
+    
     if (
       normalizedCommand.includes('account') || 
       normalizedCommand.includes('transaction') ||
@@ -61,85 +73,6 @@ const VirtualAssistant: React.FC = () => {
       setTimeout(() => {
         playTransition();
         dispatch({ type: 'SET_STATE', payload: AppState.ACCOUNTS_TABLE });
-      }, 1500);
-      return;
-    }
-    
-    if (
-      normalizedCommand.includes('dashboard') || 
-      normalizedCommand.includes('main screen') ||
-      normalizedCommand.includes('home')
-    ) {
-      setConversation(prev => [...prev, { text: "Accessing main dashboard. Initializing...", isUser: false }]);
-      
-      setTimeout(() => {
-        playTransition();
-        dispatch({ type: 'SET_STATE', payload: AppState.DASHBOARD });
-      }, 1500);
-      return;
-    }
-    
-    if (
-      normalizedCommand.includes('terminal') || 
-      normalizedCommand.includes('console') ||
-      normalizedCommand.includes('command line')
-    ) {
-      setConversation(prev => [...prev, { text: "Activating command console interface. Standby...", isUser: false }]);
-      
-      setTimeout(() => {
-        playTransition();
-        dispatch({ type: 'SET_STATE', payload: AppState.COMMAND_CONSOLE });
-      }, 1500);
-      return;
-    }
-    
-    if (
-      normalizedCommand.includes('matrix') || 
-      normalizedCommand.includes('neo')
-    ) {
-      dispatch({ type: 'TOGGLE_MATRIX_RAIN' });
-      setConversation(prev => [...prev, { text: "Digital rain protocol toggled. 'There is no spoon.'", isUser: false }]);
-      return;
-    }
-    
-    if (
-      normalizedCommand.includes('mute') || 
-      normalizedCommand.includes('sound off') ||
-      normalizedCommand.includes('toggle sound')
-    ) {
-      dispatch({ type: 'TOGGLE_SOUND' });
-      setConversation(prev => [...prev, { 
-        text: state.soundEnabled ? 
-          "Sound disabled. Entering silent mode." : 
-          "Sound enabled. Audio feedback restored.", 
-        isUser: false 
-      }]);
-      return;
-    }
-    
-    if (
-      normalizedCommand.includes('help') || 
-      normalizedCommand.includes('what can you do') ||
-      normalizedCommand.includes('commands')
-    ) {
-      setConversation(prev => [...prev, { 
-        text: "Available commands:\n• 'Open accounts' - Access the accounts ledger\n• 'Dashboard' - Return to main dashboard\n• 'Terminal' - Open command console\n• 'Toggle sound' - Enable/disable audio\n• 'Matrix' - Toggle digital rain effect\n• 'Logout' - End current session", 
-        isUser: false 
-      }]);
-      return;
-    }
-    
-    if (
-      normalizedCommand.includes('logout') || 
-      normalizedCommand.includes('sign out') ||
-      normalizedCommand.includes('exit')
-    ) {
-      setConversation(prev => [...prev, { text: "Initiating logout sequence. Goodbye.", isUser: false }]);
-      
-      setTimeout(() => {
-        playTransition();
-        dispatch({ type: 'SET_AUTHENTICATED', payload: false });
-        dispatch({ type: 'SET_STATE', payload: AppState.LOGIN });
       }, 1500);
       return;
     }
