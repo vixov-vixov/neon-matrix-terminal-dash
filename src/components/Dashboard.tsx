@@ -66,6 +66,15 @@ const Dashboard: React.FC = () => {
           GLOBAL COMMAND CENTER
         </div>
         <div className="flex items-center space-x-4">
+          <button 
+            onClick={() => {
+              playSuccess();
+              dispatch({ type: 'SET_STATE', payload: AppState.VIRTUAL_ASSISTANT });
+            }}
+            className="hacker-button py-1 px-3 text-sm"
+          >
+            AI ASSISTANT
+          </button>
           <div className="text-hacker-neon/70 font-mono text-sm">
             USER: <span className="text-hacker-neon">{state.username.toUpperCase()}</span>
           </div>

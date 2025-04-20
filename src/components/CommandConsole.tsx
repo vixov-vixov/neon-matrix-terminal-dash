@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useAppContext, AppState } from '../context/AppContext';
 import { useSound } from '../hooks/useSound';
@@ -13,32 +12,25 @@ const CommandConsole: React.FC = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const logRef = useRef<HTMLDivElement>(null);
 
-  // Focus input on mount and when returning to this component
   useEffect(() => {
     if (inputRef.current) {
       inputRef.current.focus();
     }
   }, []);
 
-  // Handle command input change
   const handleCommandChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCommand(e.target.value);
     playKeypress();
   };
 
-  // Process command
   const processCommand = (cmd: string) => {
-    // Add command to local history
     setCommandHistory(prev => [...prev, cmd]);
     setHistoryIndex(-1);
     
-    // Add command to global state history
     dispatch({ type: 'ADD_COMMAND', payload: cmd });
     
-    // Process different commands
     const lowerCmd = cmd.toLowerCase().trim();
     
-    // Log the command to console
     appendToLog(`<span class="text-hacker-cyan">$</span> ${cmd}`, 'input');
     
     switch (lowerCmd) {
@@ -47,6 +39,7 @@ const CommandConsole: React.FC = () => {
 - accounts: View and manage account transactions
 - system logs: View system activity logs
 - settings: Adjust system settings
+- assistant: Open AI virtual assistant
 - clear: Clear the console display
 - exit: Return to dashboard
 - hello/hi/hey: Simple greeting command
@@ -80,7 +73,7 @@ const CommandConsole: React.FC = () => {
       case 'toggle sound':
         dispatch({ type: 'TOGGLE_SOUND' });
         appendToLog(`Sound effects ${!state.soundEnabled ? 'ENABLED' : 'DISABLED'}`, 'success');
-        if (!state.soundEnabled) playSuccess(); // Will only play if sound is now enabled
+        if (!state.soundEnabled) playSuccess();
         break;
         
       case 'toggle dev':
@@ -108,7 +101,6 @@ const CommandConsole: React.FC = () => {
         break;
         
       case 'neo':
-        // Matrix easter egg
         dispatch({ type: 'TOGGLE_MATRIX_RAIN' });
         appendToLog('Wake up, Neo...', 'output');
         appendToLog('The Matrix has you...', 'output');
@@ -116,7 +108,12 @@ const CommandConsole: React.FC = () => {
         playSuccess();
         break;
 
-      // Add greeting commands
+      case 'assistant':
+        playSuccess();
+        dispatch({ type: 'SET_STATE', payload: AppState.VIRTUAL_ASSISTANT });
+        appendToLog('Opening AI Virtual Assistant...', 'output');
+        break;
+
       case 'hello':
       case 'hi':
       case 'hey':
@@ -125,16 +122,13 @@ const CommandConsole: React.FC = () => {
         break;
         
       case '':
-        // Empty command, just add a new line
         break;
         
       default:
         if (lowerCmd.startsWith('echo ')) {
-          // Echo command - repeats what user says
           appendToLog(cmd.substring(5), 'output');
           playSuccess();
         } else {
-          // Unknown command
           appendToLog(`Command not recognized: "${cmd}"`, 'error');
           appendToLog('Type "help" for available commands.', 'output');
           playError();
@@ -143,7 +137,6 @@ const CommandConsole: React.FC = () => {
     }
   };
 
-  // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (command.trim()) {
@@ -152,7 +145,6 @@ const CommandConsole: React.FC = () => {
     }
   };
 
-  // Append message to console log
   const appendToLog = (message: string, type: 'input' | 'output' | 'error' | 'success' = 'output') => {
     if (!logRef.current) return;
     
@@ -166,7 +158,6 @@ const CommandConsole: React.FC = () => {
     } else if (type === 'success') {
       logItem.innerHTML = `<span class="log-timestamp">${getTimestamp()}</span> <span class="text-green-400">${message}</span>`;
     } else {
-      // Handle multi-line output
       const lines = message.split('\n');
       logItem.innerHTML = lines.map(line => 
         `<span class="log-timestamp">${getTimestamp()}</span> ${line}`
@@ -177,7 +168,6 @@ const CommandConsole: React.FC = () => {
     logRef.current.scrollTop = logRef.current.scrollHeight;
   };
 
-  // Handle keyboard navigation through command history
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowUp') {
       e.preventDefault();
@@ -199,7 +189,6 @@ const CommandConsole: React.FC = () => {
     } else if (e.key === 'Escape') {
       dispatch({ type: 'SET_STATE', payload: AppState.DASHBOARD });
     } else if (e.ctrlKey && e.key === 'l') {
-      // Ctrl+L clears console, like in real terminals
       e.preventDefault();
       if (logRef.current) {
         logRef.current.innerHTML = '';
@@ -207,7 +196,6 @@ const CommandConsole: React.FC = () => {
     }
   };
 
-  // Add welcome message on component mount
   useEffect(() => {
     if (logRef.current && logRef.current.childElementCount === 0) {
       appendToLog(`Welcome to the Command Terminal, ${state.username}.`, 'output');
